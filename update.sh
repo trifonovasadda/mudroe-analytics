@@ -13,9 +13,11 @@ if [ ! -s "$PW_FILE" ] || grep -q "ВСТАВЬТЕ" "$PW_FILE"; then
   echo "Нет пароля сайта в $PW_FILE — пропуск"; exit 1
 fi
 
-python3 gc_export.py deals 2025-01-01
-python3 gc_export.py group 4168060
-python3 gc_export.py group 4168061
+# если свежая выгрузка уже есть (моложе 90 минут) — не тратим лимит GetCourse повторно
+fresh() { [ -f "raw/$1.json" ] && [ -n "$(find "raw/$1.json" -mmin -90)" ]; }
+fresh deals || python3 gc_export.py deals 2025-01-01
+fresh group_4168060 || python3 gc_export.py group 4168060
+fresh group_4168061 || python3 gc_export.py group 4168061
 SITE_PASSWORD="$(tr -d '\r\n' < "$PW_FILE")" python3 build.py
 rm -f site/data.plain.json
 
