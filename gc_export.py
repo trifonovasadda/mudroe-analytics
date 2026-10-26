@@ -33,16 +33,29 @@ def call(path, params):
         return json.loads(r.read().decode("utf-8"))
 
 
+def rate_limited(res):
+    return "много запросов" in str(res.get("error_message", "")).lower()
+
+
 def export(path, params, name):
     key = load_key()
-    res = call(path, {"key": key, **params})
+    # GetCourse ограничивает частоту запросов: при «Слишком много запросов» ждём и пробуем снова
+    for attempt in range(12):
+        res = call(path, {"key": key, **params})
+        if res.get("success") or not rate_limited(res):
+            break
+        print("GetCourse просит подождать (лимит запросов), жду 5 минут…", flush=True)
+        time.sleep(300)
     if not res.get("success"):
         sys.exit(f"Ошибка запуска экспорта: {res.get('error_message') or res}")
     export_id = res["info"]["export_id"]
     print(f"Экспорт {name} запущен (id {export_id}), жду файл…", flush=True)
-    for attempt in range(120):
-        time.sleep(15)
+    for attempt in range(90):
+        time.sleep(60)
         res = call(f"exports/{export_id}", {"key": key})
+        if rate_limited(res):
+            time.sleep(120)
+            continue
         if res.get("success"):
             info = res["info"]
             os.makedirs(os.path.join(HERE, "raw"), exist_ok=True)
