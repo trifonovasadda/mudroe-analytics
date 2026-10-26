@@ -40,7 +40,7 @@ def rate_limited(res):
 def export(path, params, name):
     key = load_key()
     # GetCourse ограничивает частоту запросов: при «Слишком много запросов» ждём и пробуем снова
-    for attempt in range(12):
+    for attempt in range(30):
         res = call(path, {"key": key, **params})
         if res.get("success") or not rate_limited(res):
             break
@@ -50,8 +50,8 @@ def export(path, params, name):
         sys.exit(f"Ошибка запуска экспорта: {res.get('error_message') or res}")
     export_id = res["info"]["export_id"]
     print(f"Экспорт {name} запущен (id {export_id}), жду файл…", flush=True)
-    for attempt in range(90):
-        time.sleep(60)
+    for attempt in range(30):
+        time.sleep(180)
         res = call(f"exports/{export_id}", {"key": key})
         if rate_limited(res):
             time.sleep(120)
